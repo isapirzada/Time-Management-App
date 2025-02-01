@@ -1,85 +1,54 @@
 import streamlit as st
 import time
-import pandas as pd
 
-# Set page config
-st.set_page_config(page_title="Time Manager", page_icon="⏳", layout="centered")
-st.markdown("""
-    <style>
-        body {
-            background-color: white;
-            color: black;
-            font-family: Arial, sans-serif;
-        }
-        .stButton>button {
-            background-color: black;
-            color: white;
-            border-radius: 5px;
-            width: 100%;
-            padding: 10px;
-        }
-    </style>
-""", unsafe_allow_html=True)
+def main():
+    st.set_page_config(page_title="Timer App", page_icon="⏳", layout="centered")
+    
+    # Sidebar for log tracking
+    st.sidebar.header("Usage Log")
+    if "log" not in st.session_state:
+        st.session_state.log = []
+    
+    if st.sidebar.button("Clear Log"):
+        st.session_state.log = []
+    
+    for entry in st.session_state.log:
+        st.sidebar.write(entry)
+    
+    # Timer Selection
+    st.title("Select a Timer")
+    timer_choice = st.radio("Choose a timer:", ["10 minutes", "15 minutes", "20 minutes"], index=0)
+    
+    timer_map = {"10 minutes": 600, "15 minutes": 900, "20 minutes": 1200}
+    selected_time = timer_map[timer_choice]
+    
+    if st.button("Start Timer"):
+        start_timer(selected_time)
 
-st.title("⏳ Simple Time Manager")
-
-# Tabs for Time Tracking and Daily Summary
-tab1, tab2 = st.tabs(["Time Tracker", "Daily Productivity Summary"])
-
-with tab1:
-    task_name = st.text_input("Task Name", "")
-    if "start_time" not in st.session_state:
-        st.session_state.start_time = None
-    if "time_log" not in st.session_state:
-        st.session_state.time_log = []
-    if "elapsed_time" not in st.session_state:
-        st.session_state.elapsed_time = 0
-    if "timer_running" not in st.session_state:
-        st.session_state.timer_running = False
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("Start Timer") and not st.session_state.timer_running:
-            st.session_state.start_time = time.time()
-            st.session_state.elapsed_time = 0
-            st.session_state.timer_running = True
-            st.success("Timer started!")
-
+def start_timer(duration):
+    st.session_state.running = True
+    st.session_state.paused = False
+    
+    st.subheader("⏳ Sand Clock Timer")
+    
+    col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("Stop Timer") and st.session_state.timer_running:
-            end_time = time.time()
-            duration = round(end_time - st.session_state.start_time, 2)
-            st.session_state.time_log.append({"Task": task_name, "Duration (s)": duration})
-            st.session_state.start_time = None
-            st.session_state.timer_running = False
-            st.success(f"Task '{task_name}' logged: {duration} seconds")
-
-    # Timer display
-    if st.session_state.timer_running:
-        timer_placeholder = st.empty()
-        while st.session_state.timer_running:
-            st.session_state.elapsed_time = round(time.time() - st.session_state.start_time, 2)
-            timer_placeholder.write(f"### Timer: {st.session_state.elapsed_time} seconds")
+        if st.button("Pause/Resume"):
+            st.session_state.paused = not st.session_state.paused
+    
+    while duration > 0 and st.session_state.running:
+        if st.session_state.paused:
             time.sleep(1)
-
-    # Display time log
-    df = pd.DataFrame(st.session_state.time_log)
-    if not df.empty:
-        st.write("## Time Log")
-        st.dataframe(df)
+            continue
         
-        # Download log
-    data_csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button("Download Log", data_csv, "time_log.csv", "text/csv")
-
-with tab2:
-    st.header("📊 Daily Productivity Summary")
-    if not df.empty:
-        total_time = df["Duration (s)"].sum()
-        st.write(f"### Total Time Spent on Tasks: {total_time} seconds")
-        avg_time = df["Duration (s)"].mean()
-        st.write(f"### Average Task Duration: {round(avg_time, 2)} seconds")
-        st.bar_chart(df.set_index("Task"))
-    else:
-        st.write("No tasks logged yet.")
+        mins, secs = divmod(duration, 60)
+        st.write(f"Time Left: {mins:02d}:{secs:02d}")
+        time.sleep(1)
+        duration -= 1
+        
+    if duration == 0:
+        st.success("⏳ Time's Up!")
+        st.session_state.log.append(f"Used {duration // 60} minutes at {time.strftime('%H:%M:%S')}")
+        
+if __name__ == "__main__":
+    main()
